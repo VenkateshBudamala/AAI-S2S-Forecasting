@@ -112,8 +112,8 @@ S2S Data  --->  Preprocessing  --->  AAI Model Training  --->  Forecast Correcti
 ## 📬 Contact
 
 **Developer:** Venkatesh B.
-**Email:** [venkatesh.b@example.com](mailto:venkatesh.b@example.com)
-**GitHub:** [https://github.com/venkatesh-b](https://github.com/venkatesh-b)
+**Email:** [bvenkatesh@iisc.ac.in](mailto:bvenkatesh@iisc.ac.in)
+**GitHub:** [https://github.com/VenkateshBudamala](https://github.com/VenkateshBudamala)
 
 ---
 
