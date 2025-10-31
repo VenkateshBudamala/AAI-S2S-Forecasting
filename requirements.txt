@@ -1,6 +1,6 @@
 numpy
 pandas
-sqlite3-binary
+sqlite3
 torch
 scikit-learn
 xgboost
