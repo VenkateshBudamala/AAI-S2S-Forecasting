@@ -47,7 +47,7 @@ RANDOM_SEARCH_ITER = 10 # Number of HP combinations for RandomizedSearchCV
 
 # The expected columns are: Model, Year, Month, Step, Latitude, Longitude, S2S, Obs
 CATEGORICAL_FEATURES = ['Model']
-Data_Type = 0  # If Data_Type is random Data use '0', if you have own datasets use '1'
+Data_Type = 0  # If Data_Type is 'Random Datasets' use '0', if you have 'Own Datasets' use '1'
 
 ############################## PyTorch Utilities ###############################
 
