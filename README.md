@@ -112,7 +112,7 @@ S2S Data  --->  Preprocessing  --->  AAI Model Training  --->  Forecast Correcti
 ## 📬 Support / Questions
 
 Please open an issue in this repository if you have questions or find bugs:
-[https://github.com/venkatesh-b/Adaptive-AI-S2S-Forecasting/issues](https://github.com/venkatesh-b/Adaptive-AI-S2S-Forecasting/issues)
+[https://github.com/VenkateshBudamala/Adaptive-AI-S2S-Forecasting/issues](https://github.com/VenkateshBudamala/Adaptive-AI-S2S-Forecasting/issues)
 
 ---
 
