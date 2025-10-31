@@ -109,22 +109,12 @@ S2S Data  --->  Preprocessing  --->  AAI Model Training  --->  Forecast Correcti
 
 ---
 
-## 📬 Contact
 
-**Developer:** Venkatesh B.
-**Email:** [bvenkatesh@iisc.ac.in](mailto:bvenkatesh@iisc.ac.in)
-**GitHub:** [https://github.com/VenkateshBudamala](https://github.com/VenkateshBudamala)
 
----
+## 📬 Support / Questions
 
-## 📄 License
-
-This project is licensed under the **MIT License**.
-You can find the full license text in the [LICENSE](./LICENSE) file.
-
-© 2025 Venkatesh B.
-
-```
+Please open an issue in this repository if you have questions or find bugs:
+https://github.com/venkatesh-b/Adaptive-AI-S2S-Forecasting/issues
 
 ---
 
