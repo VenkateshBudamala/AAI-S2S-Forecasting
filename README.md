@@ -109,24 +109,27 @@ S2S Data  --->  Preprocessing  --->  AAI Model Training  --->  Forecast Correcti
 
 ---
 
-
-
 ## 📬 Support / Questions
 
 Please open an issue in this repository if you have questions or find bugs:
-https://github.com/venkatesh-b/Adaptive-AI-S2S-Forecasting/issues
+[https://github.com/venkatesh-b/Adaptive-AI-S2S-Forecasting/issues](https://github.com/venkatesh-b/Adaptive-AI-S2S-Forecasting/issues)
 
 ---
 
-✅ **Next Steps:**
+## 📄 License
 
-1. Create `README.md` in your GitHub repository  
-2. Copy-paste this content  
-3. Make sure `LICENSE` file is added with **full MIT license text**  
+This project is licensed under the **MIT License**.
+You can find the full license text in the [LICENSE](./LICENSE) file.
+
+© 2025 Venkatesh B.
+
+```
 
 ---
 
-If you want, I can **also create a “Run Online with Binder” button** in this README so users can **execute the main script in the browser** without downloading anything.  
+✅ This version is **fully professional** and ready to upload.  
+
+If you want, I can also make a **version with a “Run Online in Browser” Binder button** so anyone can execute the main script without downloading anything.  
 
 Do you want me to do that?
 ```
