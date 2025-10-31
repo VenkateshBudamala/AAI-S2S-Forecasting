@@ -1,6 +1,5 @@
 numpy
 pandas
-sqlite3
 torch
 scikit-learn
 xgboost
