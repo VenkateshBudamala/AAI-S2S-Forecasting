@@ -1,4 +1,4 @@
-# 🔥 Adaptive AI for Subseasonal-to-Seasonal (S2S) Climate Forecasting
+# 🔥 Adaptive and Aggregated Intelligence (AAI) for Subseasonal-to-Seasonal (S2S) Climate Forecasting
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-green.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)]()
@@ -6,7 +6,7 @@
 [![Made with PyTorch](https://img.shields.io/badge/Made%20with-PyTorch-red.svg)]()
 [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg)]()
 
-This repository implements an **Adaptive Artificial Intelligence (AAI)** framework designed to improve **Subseasonal-to-Seasonal (S2S)** climate forecast skill, especially for **extreme weather events** like heatwaves.
+This repository implements an **Adaptive and Aggregated Intelligence (AAI)** framework designed to improve **Subseasonal-to-Seasonal (S2S)** climate forecast skill, especially for **extreme weather events** like heatwaves.
 
 > The **main script can run with random synthetic values**, so you can test it immediately.  
 > If you want **real S2S forecast data**, please download it using the scripts in the `appendix/` folder.
@@ -17,9 +17,9 @@ This repository implements an **Adaptive Artificial Intelligence (AAI)** framewo
 
 ```
 
-Adaptive-AI-S2S-Forecasting/
+AAI-S2S-Forecasting/
 ├── main/
-│   └── Adaptive_Artificial_Intelligence_Code_for_S2S.py   # Main script (runs independently)
+│   └── Adaptive_and_Aggregated_Intelligence_Code_for_S2S.py   # Main script (runs independently)
 ├── appendix/
 │   ├── Downloading_S2S_Files.py           # Download NCEP S2S forecast data
 │   ├── Generation_of_Parameter_Sets.py    # Generate ML parameter sets
@@ -40,7 +40,7 @@ Adaptive-AI-S2S-Forecasting/
 ### 1️⃣ Clone the Repository
 ```bash
 git clone https://github.com/venkatesh-b/Adaptive-AI-S2S-Forecasting.git
-cd Adaptive-AI-S2S-Forecasting
+cd AAI-S2S-Forecasting
 ````
 
 ### 2️⃣ Install Dependencies
@@ -52,7 +52,7 @@ pip install -r requirements.txt
 ### 3️⃣ Run Main Script (with random test values)
 
 ```bash
-python main/Adaptive_Artificial_Intelligence_Code_for_S2S.py
+python main/Adaptive_and_Aggregated_Intelligence_Code_for_S2S.py
 ```
 
 > ✅ Output: bias-corrected S2S forecasts (synthetic), performance metrics
