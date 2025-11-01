@@ -41,8 +41,8 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ############################## Global Variables #################################
 VAR_NAMES = ['TMax', 'TMin', 'PCP']
 # --- AAI Settings ---
-WINDOW_SIZE = 100
-TEST_WINDOW = 20
+WINDOW_SIZE = 46
+TEST_WINDOW = 8
 RANDOM_SEARCH_ITER = 10 # Number of HP combinations for RandomizedSearchCV
 
 # The expected columns are: Model, Year, Month, Step, Latitude, Longitude, S2S, Obs
@@ -195,15 +195,15 @@ def load_data(variable, Data_Type):
             
     if df is None or df.empty or Data_Type == 0:
         # FALLBACK: Minimal mock data generation if DB loading fails
-        n_samples = 5000
-        dates = pd.date_range(start='2015-01-01', periods=n_samples, freq='D')
+        n_samples = 250
+        dates = pd.date_range(start='2015-01-01', periods=n_samples, freq='W')
         df = pd.DataFrame({
             'Model': np.random.choice(['ECMWF', 'NCEP', 'UKMO'], size=n_samples),
             'Year': dates.year,
             'Month': dates.month,
-            'Step': np.random.randint(1, 15, size=n_samples),
-            'Latitude': np.random.uniform(10, 30, size=n_samples).round(2),
-            'Longitude': np.random.uniform(70, 90, size=n_samples).round(2),
+            'Step': np.random.randint(1, 7, size=n_samples),
+            'Latitude': np.random.uniform(8, 38, size=n_samples).round(2),
+            'Longitude': np.random.uniform(68, 98, size=n_samples).round(2),
             'S2S': np.random.rand(n_samples) * 10,
             'Obs': np.random.rand(n_samples) * 10,
             'Unnamed: 0': np.arange(n_samples)
