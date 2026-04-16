@@ -123,13 +123,3 @@ You can find the full license text in the [LICENSE](./LICENSE) file.
 
 © 2025 Venkatesh B.
 
-```
-
----
-
-✅ This version is **fully professional** and ready to upload.  
-
-If you want, I can also make a **version with a “Run Online in Browser” Binder button** so anyone can execute the main script without downloading anything.  
-
-Do you want me to do that?
-```
