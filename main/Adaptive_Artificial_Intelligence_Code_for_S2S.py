@@ -48,7 +48,7 @@ RANDOM_SEARCH_ITER = 25 # Number of HP combinations for RandomizedSearchCV
 # The expected columns are: Model, Year, Month, Step, Latitude, Longitude, S2S, Obs
 CATEGORICAL_FEATURES = []
 Data_Type = 1  # If Data_Type is 'Random Datasets' use '0', if you have 'Own Datasets' use '1'
-OUTPUT_DIR = r"C:\Users\venky\Dropbox\IISC\Ideas\Warm_Season_S2S\Manuscript\Submission\JoHx\JoHx_Updated_S2S\Revision_1\Models"
+OUTPUT_DIR = " "
 ############################## PyTorch Utilities ###############################
 
 class BiasCorrectionDataset(Dataset):
