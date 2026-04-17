@@ -39,16 +39,16 @@ warnings.filterwarnings("ignore")
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ############################## Global Variables #################################
-VAR_NAMES = ['TMax', 'TMin', 'PCP']
+VAR_NAMES = ['TMax']
 # --- AAI Settings ---
 WINDOW_SIZE = 46
-TEST_WINDOW = 8
-RANDOM_SEARCH_ITER = 10 # Number of HP combinations for RandomizedSearchCV
+TEST_WINDOW = 6
+RANDOM_SEARCH_ITER = 25 # Number of HP combinations for RandomizedSearchCV
 
 # The expected columns are: Model, Year, Month, Step, Latitude, Longitude, S2S, Obs
-CATEGORICAL_FEATURES = ['Model']
-Data_Type = 0  # If Data_Type is 'Random Datasets' use '0', if you have 'Own Datasets' use '1'
-
+CATEGORICAL_FEATURES = []
+Data_Type = 1  # If Data_Type is 'Random Datasets' use '0', if you have 'Own Datasets' use '1'
+OUTPUT_DIR = r"C:\Users\venky\Dropbox\IISC\Ideas\Warm_Season_S2S\Manuscript\Submission\JoHx\JoHx_Updated_S2S\Revision_1\Models"
 ############################## PyTorch Utilities ###############################
 
 class BiasCorrectionDataset(Dataset):
@@ -163,7 +163,7 @@ class TorchRegressor(BaseEstimator, RegressorMixin):
         if 'criterion' in params: self.criterion = params.pop('criterion')
         if 'optimizer' in params: self.optimizer = params.pop('optimizer')
         if 'lr' in params: self.lr = params.pop('lr')
-        if 'batch_size' in params: self.batch_size = params.pop('batch_size')
+        if 'batch_size' in params: self.batch_size = params.pop('batch_size') 
         if 'epochs' in params: self.epochs = params.pop('epochs')
         
         # All remaining params are model_params
@@ -185,7 +185,8 @@ def load_data(variable, Data_Type):
         try:
             conn = sqlite3.connect('S2S_India.db')
             # LIMIT applied here for debugging and memory safety
-            query = f"SELECT * FROM {variable} LIMIT 10000"
+            # query = f"SELECT * FROM {variable} LIMIT 10000"
+            query = "SELECT * FROM Tmax_Sorted"
             df = pd.read_sql_query(query, conn)
             conn.close()
             print(f"Successfully loaded {len(df)} rows (temporary limit).")
@@ -220,7 +221,8 @@ def load_data(variable, Data_Type):
     df.dropna(inplace=True)
     
     # AAI Feature Engineering (Contextual Adaptivity: One-Hot Encoding)
-    df = pd.get_dummies(df, columns=CATEGORICAL_FEATURES, prefix=CATEGORICAL_FEATURES)
+    if len(CATEGORICAL_FEATURES) > 0:
+        df = pd.get_dummies(df, columns=CATEGORICAL_FEATURES, prefix=CATEGORICAL_FEATURES)
     
     # AAI Target Variable: Calculate Bias
     df['Bias'] = df['Obs'] - df['S2S']
@@ -228,17 +230,15 @@ def load_data(variable, Data_Type):
     print(f"Data prepared. Final feature count: {df.shape[1] - 2} (excluding Obs/Bias).")
     return df
 
+
 def prepare_data(df):
-    """
-    Prepare the input features (X), target variable (y), and raw S2S/Obs.
-    """
     EXCLUDE_COLS = ['Obs', 'Bias']
     feature_cols = [col for col in df.columns if col not in EXCLUDE_COLS]
     
-    X = df[feature_cols].values
-    y = df['Bias'].values
-    S2S_raw = df['S2S'].values
-    obs_raw = df['Obs'].values
+    X = df[feature_cols]
+    y = df['Bias']
+    S2S_raw = df['S2S']
+    obs_raw = df['Obs']
     
     return X, y, S2S_raw, obs_raw
 
@@ -424,72 +424,149 @@ def select_best_model(X, y, S2S_raw, obs_raw):
     # Define RMSE scorer for RandomizedSearchCV
     rmse_scorer = make_scorer(mean_squared_error, greater_is_better=False, squared=False)
     
+    # =============================================================================
+    # 🔁 CLASSICAL MODELS (OPTIMIZED)
+    # =============================================================================
+    
     tuning_models = {
-        'XGBoost': (build_xgb_model(), X_train, X_test, 
-                    {'n_estimators': [100, 200, 300], 'learning_rate': [0.01, 0.05, 0.1], 'max_depth': [3, 5, 7]}),
-        
-        'RandomForest': (build_rf_model(), X_train, X_test,
-                         {'n_estimators': [100, 200, 300], 'max_depth': [5, 10, 15], 'min_samples_leaf': [1, 5, 10]}),
-        
-        # Note: SVM uses scaled data
-        'SVM': (build_svm_model(), X_train_scaled, X_test_scaled, 
-                {'C': [1.0, 10.0, 100.0], 'gamma': [0.001, 0.01, 0.1]})
+    
+        'XGBoost': (
+            build_xgb_model(), 
+            X_train, 
+            X_test, 
+            {
+                'n_estimators': [200, 400, 800],
+                'learning_rate': [0.01, 0.03, 0.05],
+                'max_depth': [3, 4, 5, 6],
+                'subsample': [0.8, 1.0],
+                'colsample_bytree': [0.8, 1.0],
+                'gamma': [0, 0.1, 0.3],
+                'reg_alpha': [0, 0.1],
+                'reg_lambda': [1, 5]
+            }
+        ),
+    
+        'RandomForest': (
+            build_rf_model(), 
+            X_train, 
+            X_test,
+            {
+                'n_estimators': [200, 400, 800],
+                'max_depth': [10, 20, None],
+                'min_samples_leaf': [1, 2, 5],
+                'min_samples_split': [2, 5],
+                'max_features': ['sqrt']
+            }
+        ),
+    
+        'SVM': (
+            build_svm_model(), 
+            X_train_scaled, 
+            X_test_scaled, 
+            {
+                'C': [0.5, 1, 10, 50],
+                'gamma': ['scale', 0.01, 0.05],
+                'epsilon': [0.01, 0.1]
+            }
+        )
     }
     
-    # Add Deep Learning Models
+    # =============================================================================
+    # 🧠 DEEP LEARNING MODELS (OPTIMIZED)
+    # =============================================================================
     
     dl_models = {
-        # Note: input_shape is passed to the wrapper, then used internally
-        'LSTM': (TorchRegressor(model_builder=build_lstm_model, input_shape=X_train_dl_scaled.shape[1:]),
-                 X_train_dl_scaled, X_test_dl_scaled,
-                 {'lstm_units': [32, 64, 128], 'dense_units': [10, 20, 50], 
-                  'lr': [0.001, 0.01], 'epochs': [10, 20], 'batch_size': [16, 32]}),
-        
-        'CNN': (TorchRegressor(model_builder=build_cnn_model, input_shape=X_train_cnn_scaled.shape[1:]),
-                 X_train_cnn_scaled, X_test_cnn_scaled,
-                 {'filters': [32, 64, 128], 'kernel_size': [2, 3], 
-                  'dense_units': [10, 20, 50], 'lr': [0.001, 0.01], 'epochs': [10, 20], 'batch_size': [16, 32]}),
-                  
-        'Transformer': (TorchRegressor(model_builder=build_transformer_model, input_shape=X_train_dl_scaled.shape[1:]),
-                          X_train_dl_scaled, X_test_dl_scaled,
-                          {'heads': [1, 2], 'ffn_dim': [32, 64], 
-                           'lr': [0.001, 0.01], 'epochs': [10, 20], 'batch_size': [16, 32]}),
+    
+        'LSTM': (
+            TorchRegressor(
+                model_builder=build_lstm_model, 
+                input_shape=X_train_dl_scaled.shape[1:]
+            ),
+            X_train_dl_scaled, 
+            X_test_dl_scaled,
+            {
+                'lstm_units': [32, 64, 128],
+                'dense_units': [16, 32],
+                'lr': [0.0005, 0.001],
+                'epochs': [20],
+                'batch_size': [16, 32]
+            }
+        ),
+    
+        'CNN': (
+            TorchRegressor(
+                model_builder=build_cnn_model, 
+                input_shape=X_train_cnn_scaled.shape[1:]
+            ),
+            X_train_cnn_scaled, 
+            X_test_cnn_scaled,
+            {
+                'filters': [32, 64],
+                'kernel_size': [2, 3],
+                'dense_units': [16, 32],
+                'lr': [0.0005, 0.001],
+                'epochs': [20],
+                'batch_size': [16, 32]
+            }
+        ),
+    
+        'Transformer': (
+            TorchRegressor(
+                model_builder=build_transformer_model, 
+                input_shape=X_train_dl_scaled.shape[1:]
+            ),
+            X_train_dl_scaled, 
+            X_test_dl_scaled,
+            {
+                'heads': [2],
+                'ffn_dim': [32, 64],
+                'lr': [0.0005, 0.001],
+                'epochs': [20],
+                'batch_size': [16, 32]
+            }
+        )
     }
+    
+    # 🔥 MERGE
     tuning_models.update(dl_models)
     
     print(f"--- Hyperparameter Tuning ({RANDOM_SEARCH_ITER} iterations per model) ---")
-    
-    for name, (model, X_tune_train, X_tune_test, param_dist) in tuning_models.items():
-        print(f"Tuning {name}...")
+    pbar = tqdm(tuning_models.items(), desc="Tuning Progress")
 
-        random_search = RandomizedSearchCV(
-            estimator=model,
-            param_distributions=param_dist,
-            n_iter=RANDOM_SEARCH_ITER,
-            cv=3,
-            scoring=rmse_scorer,
-            random_state=42,
-            # Force n_jobs=1 for PyTorch models as they cannot be reliably pickled across processes
-            n_jobs=1 if isinstance(model, TorchRegressor) else 1
-        )
-        
-        # Fit the search on the training data
-        random_search.fit(X_tune_train, y_train)
-        best_model = random_search.best_estimator_
-        
-        # Determine which data split to use for final evaluation
-        X_eval = X_test_scaled if name in ['SVM', 'LSTM', 'CNN', 'Transformer'] else X_test
-        
-        raw_rmse, corrected_rmse = evaluate_model(
-            best_model, X_eval, y_test, S2S_test, obs_test, name
-        )
-        
-        print(f"  Best {name} Corrected RMSE: {corrected_rmse:.4f} (HPs: {random_search.best_params_})")
-        all_results.append({
-            'model_name': name, 'corrected_rmse': corrected_rmse, 
-            'correction_model': best_model, 
-            'scaler_X': (scaler_X if name in ['SVM', 'LSTM', 'CNN', 'Transformer'] else None)
-        })
+    for name, (model, X_tune_train, X_tune_test, param_dist) in pbar:
+        # Update the progress bar description to show the current model
+        # print(f"Tuning {name}...")
+        with tqdm(total=RANDOM_SEARCH_ITER, desc=f"Tuning {name}") as pbar:
+    
+            random_search = RandomizedSearchCV(
+                estimator=model,
+                param_distributions=param_dist,
+                n_iter=RANDOM_SEARCH_ITER,
+                cv=3,
+                scoring=rmse_scorer,
+                random_state=42,
+                # Force n_jobs=1 for PyTorch models as they cannot be reliably pickled across processes
+                n_jobs=1 if isinstance(model, TorchRegressor) else 1,
+                verbose=1
+            )
+            
+            # Fit the search on the training data
+            random_search.fit(X_tune_train, y_train)
+            best_model = random_search.best_estimator_
+            
+            # Determine which data split to use for final evaluation
+            X_eval = X_test_scaled if name in ['SVM', 'LSTM', 'CNN', 'Transformer'] else X_test
+            
+            raw_rmse, corrected_rmse = evaluate_model(
+                best_model, X_eval, y_test, S2S_test, obs_test, name
+            )
+                
+            print(f"  Best {name} Corrected RMSE: {corrected_rmse:.4f} (HPs: {random_search.best_params_})")
+            all_results.append({
+                'model_name': name, 'corrected_rmse': corrected_rmse, 
+                'correction_model': best_model, 
+                'scaler_X': (scaler_X if name in ['SVM', 'LSTM', 'CNN', 'Transformer'] else None)
+            })
     
     # --- Final Selection ---
     best_result = min(all_results, key=lambda x: x['corrected_rmse'])
@@ -498,99 +575,118 @@ def select_best_model(X, y, S2S_raw, obs_raw):
     return best_result['model_name'], best_result['correction_model'], best_result['scaler_X']
 
 
+
+
 def run_adaptive_correction(df, best_model_template, best_model_name, initial_scaler):
     """
-    Implements the core AAI: Temporal Adaptivity via Sliding Window.
-    Re-trains the chosen model on the sliding window for temporal adaptation.
+    Adaptive correction using TIME-BASED sliding window (correct for S2S data).
     """
-    X, y, S2S_raw, obs_raw = prepare_data(df)
-    
+
+    # ==============================
+    # 1. CREATE TIME INDEX
+    # ==============================
+    df = df.copy()
+    df = df.sort_values(by=['Year','Month','Step','Latitude','Longitude']).reset_index(drop=True)
+
+    df['time_id'] = df.groupby(['Year','Month','Step']).ngroup()
+
+    time_steps = sorted(df['time_id'].unique())
+
+    corrected_forecasts = np.full(len(df), np.nan)
+
     is_dl = best_model_name in ['LSTM', 'CNN', 'Transformer']
     is_scaled = best_model_name in ['SVM', 'LSTM', 'CNN', 'Transformer']
-    
-    corrected_forecasts = np.zeros(len(df)) * np.nan
-    start_index = WINDOW_SIZE
-    total_iterations = (len(df) - start_index) // TEST_WINDOW
-    
-    print(f"\n--- Running AAI Sliding Window Correction ({best_model_name}) ---")
-    print(f"Total data points: {len(df)}. Window size: {WINDOW_SIZE}. Forecast block: {TEST_WINDOW}.")
-    
-    for i in tqdm(range(total_iterations)):
-        train_start = i * TEST_WINDOW
-        train_end = train_start + WINDOW_SIZE
-        test_start = train_end
-        test_end = test_start + TEST_WINDOW
-        
-        if test_end > len(df):
-            test_end = len(df)
-            TEST_WINDOW_ACTUAL = test_end - test_start
-        else:
-            TEST_WINDOW_ACTUAL = TEST_WINDOW
 
-        X_train, y_train = X[train_start:train_end], y[train_start:train_end]
-        X_test, S2S_test = X[test_start:test_end], S2S_raw[test_start:test_end]
-        
-        # Re-initialize the model for the new window data
-        best_params = best_model_template.get_params()
-        model = best_model_template.__class__(**best_params)
+    print(f"\n--- Running TIME-BASED Adaptive Correction ({best_model_name}) ---")
+    print(f"Total time steps: {len(time_steps)}")
 
-        # Determine the data preparation steps for the current window
+    # ==============================
+    # 2. SLIDING WINDOW OVER TIME
+    # ==============================
+    for i in range(0, len(time_steps) - WINDOW_SIZE, TEST_WINDOW):
+
+        train_times = time_steps[i : i + WINDOW_SIZE]
+        test_times  = time_steps[i + WINDOW_SIZE : i + WINDOW_SIZE + TEST_WINDOW]
+
+        train_df = df[df['time_id'].isin(train_times)]
+        test_df  = df[df['time_id'].isin(test_times)]
+
+        if len(test_df) == 0:
+            continue
+
+        # ==============================
+        # 3. PREPARE DATA
+        # ==============================
+        X_train, y_train, S2S_train, obs_train = prepare_data(train_df)
+        X_test,  y_test,  S2S_test,  obs_test  = prepare_data(test_df)
+
+        # ==============================
+        # 4. SCALING (if required)
+        # ==============================
         if is_scaled:
-            # Re-fit scaler for each window for true adaptivity
             scaler_X = StandardScaler()
-            X_train_processed = scaler_X.fit_transform(X_train)
-            X_test_processed = scaler_X.transform(X_test)
-        else:
-            X_train_processed = X_train
-            X_test_processed = X_test
+            X_train = scaler_X.fit_transform(X_train)
+            X_test  = scaler_X.transform(X_test)
 
+        # ==============================
+        # 5. RESHAPE FOR DL
+        # ==============================
         if is_dl:
-            # DL Models require 3D reshape AFTER scaling
-            X_train_processed = reshape_for_dl(X_train_processed, best_model_name)
-            X_test_processed = reshape_for_dl(X_test_processed, best_model_name)
-            
-            # Since TorchRegressor is designed to reset the model on fit, we just call fit
-            model.fit(X_train_processed, y_train)
-            predicted_bias = model.predict(X_test_processed)
-            
-        else: # Classical Models (XGBoost, RandomForest, SVM)
-            model.fit(X_train_processed, y_train)
-            predicted_bias = model.predict(X_test_processed)
-        
-        # Apply the Correction
-        predicted_bias = predicted_bias.flatten() # Ensure 1D array
-        corrected_block = S2S_test + predicted_bias
-        
-        # Save the corrected forecast
-        corrected_forecasts[test_start:test_end] = corrected_block[:TEST_WINDOW_ACTUAL]
+            X_train = reshape_for_dl(X_train, best_model_name)
+            X_test  = reshape_for_dl(X_test, best_model_name)
 
+        # ==============================
+        # 6. RE-INITIALIZE MODEL
+        # ==============================
+        model = best_model_template.__class__(**best_model_template.get_params())
 
-    # --- FINAL EVALUATION of the Adaptively Corrected Forecast ---
-    final_obs = obs_raw[start_index:]
-    final_raw_s2s = S2S_raw[start_index:]
-    final_corrected = corrected_forecasts[start_index:]
-    
-    # Clean up NaN values
-    valid_indices = ~np.isnan(final_corrected)
-    final_obs = final_obs[valid_indices]
-    final_raw_s2s = final_raw_s2s[valid_indices]
-    final_corrected = final_corrected[valid_indices]
-    
-    final_raw_rmse = np.sqrt(mean_squared_error(final_obs, final_raw_s2s))
-    final_corrected_rmse = np.sqrt(mean_squared_error(final_obs, final_corrected))
-    
-    skill_score = (final_raw_rmse - final_corrected_rmse) / final_raw_rmse * 100
-    
+        # ==============================
+        # 7. TRAIN
+        # ==============================
+        model.fit(X_train, y_train)
+
+        # ==============================
+        # 8. PREDICT BIAS
+        # ==============================
+        predicted_bias = model.predict(X_test).flatten()
+
+        # ==============================
+        # 9. APPLY CORRECTION
+        # ==============================
+        corrected_values = S2S_test + predicted_bias
+
+        # ==============================
+        # 10. STORE RESULTS
+        # ==============================
+        test_indices = test_df.index
+        corrected_forecasts[test_indices] = corrected_values
+
+        print(f"Window {i}: Train steps={len(train_times)}, Test steps={len(test_times)}")
+
+    # ==============================
+    # 11. FINAL EVALUATION
+    # ==============================
+    valid = ~np.isnan(corrected_forecasts)
+
+    final_obs = df.loc[valid, 'Obs'].values
+    final_s2s = df.loc[valid, 'S2S'].values
+    final_corr = corrected_forecasts[valid]
+
+    rmse_raw = np.sqrt(mean_squared_error(final_obs, final_s2s))
+    rmse_corr = np.sqrt(mean_squared_error(final_obs, final_corr))
+
+    skill = (rmse_raw - rmse_corr) / rmse_raw * 100
+
     print("\n-------------------------------------------------")
     print("      AAI ADAPTIVE BIAS CORRECTION RESULTS         ")
     print("-------------------------------------------------")
     print(f"Base Model Used: {best_model_name} (Adaptively Tuned)")
-    print(f"Raw S2S Forecast RMSE: {final_raw_rmse:.4f}")
-    print(f"AAI Corrected Forecast RMSE: {final_corrected_rmse:.4f}")
-    print(f"Skill Improvement: {skill_score:.2f}%")
+    print(f"Raw S2S Forecast RMSE: {rmse_raw:.4f}")
+    print(f"AAI Corrected Forecast RMSE: {rmse_corr:.4f}")
+    print(f"Skill Improvement: {skill:.2f}%")
     print("-------------------------------------------------")
-    
     df['AAI_Corrected'] = corrected_forecasts
+
     return df
 
 def save_results(df, variable):
@@ -608,29 +704,81 @@ def save_results(df, variable):
     print(f"\nTable contains {len(df_save)} corrected entries.")
 
 
+
+import sys
+import os
+
+class Tee:
+    def __init__(self, filepath):
+        self.file = open(filepath, "w")
+        self.stdout = sys.stdout
+
+    def write(self, data):
+        self.file.write(data)
+        self.stdout.write(data)
+
+    def flush(self):
+        self.file.flush()
+        self.stdout.flush()
+
 def main():
     """Main execution block."""
+
+    # =============================
+    # LOG FILE SETUP
+    # =============================
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    log_file = os.path.join(OUTPUT_DIR, "AAI_Run_Log.txt")
+
+    # Enable dual printing (console + file)
+    sys.stdout = Tee(log_file)
+
     for variable in VAR_NAMES:
         print(f"================ STARTING VARIABLE: {variable} ================")
         
-        # 1. Load and Prepare Data (Uses SQLite with Fallback)
-        df = load_data(variable, Data_Type) # Pass Data_Type here
+        df = load_data(variable, Data_Type)
+
+        df = df[df['Step'] <= 6]
+        df = df[(df['Obs'] < 60) & (df['Obs'] > -10)]
+        df = df[(df['S2S'] < 60) & (df['S2S'] > -10)]
+
+        df['Bias'] = df['Obs'] - df['S2S']
+
+        df = df.sort_values(by=['Year','Month','Step']).reset_index(drop=True)
+
+        print("\nAfter cleaning:")
+        print(df.describe().loc[['min', 'max']])
+
         if len(df) < WINDOW_SIZE + TEST_WINDOW:
-            print(f"Dataset for {variable} is too small ({len(df)} rows). Need at least {WINDOW_SIZE + TEST_WINDOW} rows for adaptive correction. Skipping.")
+            print(f"Dataset too small ({len(df)} rows). Skipping.")
             continue
 
-        X, y, S2S_raw, obs_raw = prepare_data(df)
-        
-        # 2. Select Best Model (Adaptive HP Tuning)
-        best_model_name, best_model_template, initial_scaler = select_best_model(X, y, S2S_raw, obs_raw)
-        
-        # 3. Run Adaptive Correction (Temporal Adaptivity)
-        final_df = run_adaptive_correction(df, best_model_template, best_model_name, initial_scaler)
-        
-        # 4. Save Results
+        df_train = df[df['Year'] <= 2019].copy()
+
+        X_train, y_train, S2S_train, obs_train = prepare_data(df_train)
+
+        best_model_name, best_model_template, initial_scaler = select_best_model(
+            X_train, y_train, S2S_train, obs_train
+        )
+
+        print(f"\nBest model selected: {best_model_name}")
+
+        df_adapt = df[df['Year'] >= 2020].copy()
+
+        final_df = run_adaptive_correction(
+            df_adapt,
+            best_model_template,
+            best_model_name,
+            initial_scaler
+        )
+
         save_results(final_df, variable)
+
         print(f"================ ENDING VARIABLE: {variable} ================\n")
 
+    print(f"\n✅ Logs also saved to file.")
+
 if __name__ == "__main__":
-    # Removed TensorFlow specific logging setup
     main()
